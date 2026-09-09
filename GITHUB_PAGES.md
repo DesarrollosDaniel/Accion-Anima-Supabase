@@ -4,9 +4,9 @@ El proyecto ya contiene el workflow `.github/workflows/deploy-pages.yml`. Se eje
 
 ## Datos que harán falta
 
-- nombre de la cuenta u organización de GitHub;
-- nombre del repositorio;
-- URL pública resultante, normalmente `https://USUARIO.github.io/REPOSITORIO/`;
+- cuenta de GitHub: `DesarrollosDaniel`;
+- repositorio: `Accion_animal_web`;
+- URL pública: `https://desarrollosdaniel.github.io/Accion_animal_web/`;
 - acceso al repositorio para configurar GitHub Pages y dos variables de Actions.
 
 No se debe copiar `.env.local` al repositorio. El archivo está ignorado por Git y contiene solamente la configuración de esta computadora.
@@ -26,7 +26,7 @@ No se debe copiar `.env.local` al repositorio. El archivo está ignorado por Git
 3. Desde esta carpeta, asociar el repositorio y enviar la rama `main`:
 
    ```powershell
-   git remote add origin https://github.com/USUARIO/REPOSITORIO.git
+   git remote add origin https://github.com/DesarrollosDaniel/Accion_animal_web.git
    git push -u origin main
    ```
 
@@ -44,7 +44,7 @@ Una vez conocida la URL exacta de GitHub Pages, se deben realizar dos cambios:
 2. Actualizar la URL usada por la función de invitaciones:
 
    ```powershell
-   npx --yes supabase@2.117.0 secrets set APP_URL=https://USUARIO.github.io/REPOSITORIO/ --project-ref hvfubwyzarikudisbwfy
+   npx --yes supabase@2.117.0 secrets set APP_URL=https://desarrollosdaniel.github.io/Accion_animal_web/ --project-ref hvfubwyzarikudisbwfy
    ```
 
 La barra `/` final es importante. Después de actualizar `APP_URL` no hace falta volver a desplegar la función.

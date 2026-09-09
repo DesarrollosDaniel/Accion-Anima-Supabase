@@ -114,6 +114,9 @@ npm run build
 
 El proyecto incluye un workflow de GitHub Actions preparado para compilar y publicar automáticamente la rama `main`. Utiliza rutas relativas, por lo que funciona tanto en `https://usuario.github.io/repositorio/` como con un dominio personalizado sin cambiar el código.
 
+Repositorio: `https://github.com/DesarrollosDaniel/Accion_animal_web`  
+Sitio: `https://desarrollosdaniel.github.io/Accion_animal_web/`
+
 Las instrucciones para crear el repositorio, configurar las variables públicas de Supabase y conectar la URL final con Auth están en [`GITHUB_PAGES.md`](GITHUB_PAGES.md).
 
 ## Decisiones pendientes
