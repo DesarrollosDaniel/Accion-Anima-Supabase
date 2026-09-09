@@ -2,6 +2,8 @@
 
 El proyecto ya contiene el workflow `.github/workflows/deploy-pages.yml`. Se ejecutará automáticamente con cada cambio enviado a la rama `main` y también puede iniciarse manualmente desde la pestaña **Actions**.
 
+Estado actual: publicado correctamente en `https://desarrollosdaniel.github.io/Accion_animal_web/`. Las variables de GitHub, GitHub Pages, el Site URL de Supabase, las Redirect URLs y `APP_URL` ya están configurados.
+
 ## Datos que harán falta
 
 - cuenta de GitHub: `DesarrollosDaniel`;
@@ -12,6 +14,8 @@ El proyecto ya contiene el workflow `.github/workflows/deploy-pages.yml`. Se eje
 No se debe copiar `.env.local` al repositorio. El archivo está ignorado por Git y contiene solamente la configuración de esta computadora.
 
 ## Primera publicación
+
+Estos pasos ya fueron completados y se conservan como referencia para reconstruir la publicación si fuera necesario.
 
 1. Crear un repositorio vacío en GitHub, sin README, licencia ni `.gitignore` adicionales.
 2. En el repositorio abrir **Settings → Secrets and variables → Actions → Variables** y crear:

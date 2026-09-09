@@ -124,11 +124,9 @@ Las instrucciones para crear el repositorio, configurar las variables públicas 
 Antes de implementar se deben confirmar:
 
 1. definir el procedimiento de migración cuando esté disponible la carpeta `uploaded/`;
-2. crear y enlazar el repositorio de GitHub;
-3. confirmar el nombre final del repositorio y obtener su URL de Pages;
-4. actualizar `APP_URL` y las Redirect URLs de Supabase con esa dirección definitiva;
-5. completar perfil de mascota, formularios clínicos y archivos.
+2. completar perfil de mascota, formularios clínicos y archivos;
+3. decidir el servicio definitivo para almacenar los aproximadamente 15 GB de archivos históricos.
 
 ## Estado
 
-Arquitectura inicial, permisos y módulos documentados. El esquema local de Supabase está definido mediante migraciones versionadas e incluye pruebas pgTAP y una comprobación remota. El proyecto `hvfubwyzarikudisbwfy` está enlazado y existe exactamente un dueño activo. El modelo fue simplificado: no existen módulos independientes de tutores ni citas; cada mascota guarda directamente el nombre y teléfono del tutor, permitiendo datos repetidos. La aplicación React/Vite incluye acceso con correo y contraseña, panel, búsqueda y alta de mascotas. La sección Usuarios permite al dueño consultar perfiles e invitar personal de Veterinaria o Recepción; la Edge Function correspondiente está desplegada y la URL local está autorizada para aceptar invitaciones. La revisión TypeScript y la compilación de producción pasan correctamente. El respaldo `accion_animal_db.sql` fue localizado y analizado sin importarlo. La información histórica y la carpeta `uploaded/` aún no se han migrado.
+Arquitectura inicial, permisos y módulos documentados. El esquema local de Supabase está definido mediante migraciones versionadas e incluye pruebas pgTAP y una comprobación remota. El proyecto `hvfubwyzarikudisbwfy` está enlazado y existe exactamente un dueño activo. El modelo fue simplificado: no existen módulos independientes de tutores ni citas; cada mascota guarda directamente el nombre y teléfono del tutor, permitiendo datos repetidos. La aplicación React/Vite incluye acceso con correo y contraseña, panel, búsqueda y alta de mascotas. La sección Usuarios permite al dueño consultar perfiles e invitar personal de Veterinaria o Recepción; la Edge Function correspondiente está desplegada. El repositorio público y GitHub Pages están activos, y las redirecciones de Supabase apuntan al sitio publicado conservando el acceso local de desarrollo. La revisión TypeScript y la compilación de producción pasan correctamente. El respaldo `accion_animal_db.sql` fue localizado y analizado sin importarlo. La información histórica y la carpeta `uploaded/` aún no se han migrado.
