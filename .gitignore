@@ -1,0 +1,21 @@
+# Datos reales y archivos clínicos: nunca publicar
+/accion_animal_db.sql
+/legacy-data/
+/uploaded/
+
+# Configuración local y secretos
+.env
+.env.*
+!.env.example
+
+# Dependencias y compilación
+node_modules/
+dist/
+*.tsbuildinfo
+.tmp-*/
+supabase/.temp/
+
+# Herramientas y sistema operativo
+.DS_Store
+Thumbs.db
+*.log
