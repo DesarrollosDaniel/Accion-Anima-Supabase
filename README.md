@@ -53,7 +53,7 @@ Los archivos clínicos permanecerán privados y se consultarán únicamente por 
 - acceso mediante correo electrónico y contraseña;
 - tres roles: dueño, veterinaria/o y recepción;
 - existirá un único usuario con rol `owner`;
-- solo el dueño podrá invitar usuarios, activar o desactivar cuentas y asignar los roles de veterinaria/o o recepción;
+- solo el dueño podrá invitar y eliminar usuarios, activar o desactivar cuentas y asignar los roles de veterinaria/o o recepción;
 - el registro público de cuentas permanecerá deshabilitado;
 - todos los usuarios autenticados pueden consultar todas las mascotas y expedientes;
 - recepción puede registrar y editar mascotas, incluyendo el nombre y teléfono del tutor en cada registro;
@@ -63,7 +63,7 @@ Los archivos clínicos permanecerán privados y se consultarán únicamente por 
 - todas las tablas expuestas tendrán RLS y políticas explícitas;
 - ninguna clave secreta o `service_role` formará parte de la aplicación publicada.
 
-La administración de cuentas se realiza mediante la Supabase Edge Function autenticada `manage-users`. Esta comprueba en el servidor que quien realiza la solicitud sea el dueño antes de usar la API administrativa de Auth. La clave secreta permanece únicamente en el entorno seguro de Supabase. Desde la sección **Usuarios** el dueño indica nombre, correo y rol; la persona invitada recibe un enlace para crear su propia contraseña.
+La administración de cuentas se realiza mediante la Supabase Edge Function autenticada `manage-users`. Esta comprueba en el servidor que quien realiza la solicitud sea el dueño antes de usar la API administrativa de Auth. La clave secreta permanece únicamente en el entorno seguro de Supabase. Desde la sección **Usuarios** el dueño indica nombre, correo y rol; la persona invitada recibe un enlace para crear su propia contraseña. El dueño también puede eliminar cuentas de Veterinaria o Recepción, pero no su propia cuenta ni otra cuenta dueña. Al eliminar, desaparecen el acceso de Auth y el perfil; las mascotas, expedientes, notas, eventos de auditoría y archivos creados por esa persona se conservan.
 
 ## Diseño visual acordado
 
@@ -129,4 +129,4 @@ Antes de implementar se deben confirmar:
 
 ## Estado
 
-Arquitectura inicial, permisos y módulos documentados. El esquema local de Supabase está definido mediante migraciones versionadas e incluye pruebas pgTAP y una comprobación remota. El proyecto `hvfubwyzarikudisbwfy` está enlazado y existe exactamente un dueño activo. El modelo fue simplificado: no existen módulos independientes de tutores ni citas; cada mascota guarda directamente el nombre y teléfono del tutor, permitiendo datos repetidos. La aplicación React/Vite incluye acceso con correo y contraseña, panel, búsqueda y alta de mascotas. La sección Usuarios permite al dueño consultar perfiles e invitar personal de Veterinaria o Recepción; la Edge Function correspondiente está desplegada. El repositorio público y GitHub Pages están activos, y las redirecciones de Supabase apuntan al sitio publicado conservando el acceso local de desarrollo. La revisión TypeScript y la compilación de producción pasan correctamente. El respaldo `accion_animal_db.sql` fue localizado y analizado sin importarlo. La información histórica y la carpeta `uploaded/` aún no se han migrado.
+Arquitectura inicial, permisos y módulos documentados. El esquema local de Supabase está definido mediante migraciones versionadas e incluye pruebas pgTAP y una comprobación remota. El proyecto `hvfubwyzarikudisbwfy` está enlazado y existe exactamente un dueño activo. El modelo fue simplificado: no existen módulos independientes de tutores ni citas; cada mascota guarda directamente el nombre y teléfono del tutor, permitiendo datos repetidos. La aplicación React/Vite incluye acceso con correo y contraseña, panel, búsqueda y alta de mascotas. La sección Usuarios permite al dueño consultar perfiles, invitar personal de Veterinaria o Recepción y eliminar esas cuentas sin perder las acciones ni los archivos históricos; la Edge Function correspondiente está desplegada. El repositorio público y GitHub Pages están activos, y las redirecciones de Supabase apuntan al sitio publicado conservando el acceso local de desarrollo. La revisión TypeScript y la compilación de producción pasan correctamente. El respaldo `accion_animal_db.sql` fue localizado y analizado sin importarlo. La información histórica y la carpeta `uploaded/` aún no se han migrado.

@@ -12,6 +12,7 @@ import {
   Search,
   ShieldCheck,
   Stethoscope,
+  Trash2,
   X,
 } from 'lucide-react'
 import { supabase } from './lib/supabase'
@@ -218,7 +219,7 @@ function PetForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => Pro
   )
 }
 
-async function functionErrorMessage(error: unknown) {
+async function functionErrorMessage(error: unknown, fallback: string) {
   if (error && typeof error === 'object' && 'context' in error) {
     const context = (error as { context?: Response }).context
     try {
@@ -228,7 +229,7 @@ async function functionErrorMessage(error: unknown) {
       // The fallback below is intentionally user-friendly when the response has no JSON body.
     }
   }
-  return 'No fue posible enviar la invitación. Intenta de nuevo.'
+  return fallback
 }
 
 function InviteUserForm({ onClose, onInvited }: { onClose: () => void; onInvited: () => Promise<void> }) {
@@ -249,7 +250,7 @@ function InviteUserForm({ onClose, onInvited }: { onClose: () => void; onInvited
     })
 
     if (invokeError) {
-      setError(await functionErrorMessage(invokeError))
+      setError(await functionErrorMessage(invokeError, 'No fue posible enviar la invitación. Intenta de nuevo.'))
       setSaving(false)
       return
     }
@@ -274,6 +275,50 @@ function InviteUserForm({ onClose, onInvited }: { onClose: () => void; onInvited
       <div className="form-actions span-2">
         <button type="button" className="button secondary" onClick={onClose}>Cancelar</button>
         <button type="submit" className="button primary" disabled={saving}>{saving ? 'Enviando…' : 'Enviar invitación'}</button>
+      </div>
+    </form>
+  )
+}
+
+function DeleteUserForm({ user, onClose, onDeleted }: { user: Profile; onClose: () => void; onDeleted: () => Promise<void> }) {
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setDeleting(true)
+    setError('')
+
+    const { error: invokeError } = await supabase.functions.invoke('manage-users', {
+      method: 'DELETE',
+      body: { userId: user.id },
+    })
+
+    if (invokeError) {
+      setError(await functionErrorMessage(invokeError, 'No fue posible eliminar el usuario. Intenta de nuevo.'))
+      setDeleting(false)
+      return
+    }
+
+    await onDeleted()
+    onClose()
+  }
+
+  return (
+    <form className="delete-confirm" onSubmit={submit}>
+      <span className="delete-confirm-icon"><Trash2 size={26} /></span>
+      <div>
+        <h3>¿Eliminar a {user.display_name}?</h3>
+        <p>La cuenta y su acceso se eliminarán definitivamente de Supabase.</p>
+      </div>
+      <div className="retention-note">
+        <ShieldCheck size={19} />
+        <p><strong>El historial se conservará.</strong> No se borrarán mascotas, expedientes, notas, auditorías ni archivos creados por esta persona.</p>
+      </div>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <div className="form-actions">
+        <button type="button" className="button secondary" onClick={onClose}>Cancelar</button>
+        <button type="submit" className="button danger" disabled={deleting}>{deleting ? 'Eliminando…' : 'Eliminar usuario'}</button>
       </div>
     </form>
   )
@@ -350,6 +395,7 @@ function Workspace({ session }: { session: Session }) {
   const [notice, setNotice] = useState('')
   const [mobileNav, setMobileNav] = useState(false)
   const [modal, setModal] = useState<'pet' | 'invite' | null>(null)
+  const [userToDelete, setUserToDelete] = useState<Profile | null>(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -464,9 +510,9 @@ function Workspace({ session }: { session: Session }) {
 
           {view === 'users' && profile.role === 'owner' && (
             <section className="panel page-panel">
-              <div className="page-actions"><div><p className="eyebrow">Administración</p><h2>Usuarios y roles</h2><p className="muted">Solo el dueño puede invitar personas al sistema.</p></div><button className="button primary" onClick={() => { setNotice(''); setModal('invite') }}><Plus size={18} /> Invitar usuario</button></div>
-              <div className="alert"><ShieldCheck size={18} /><span>Las invitaciones son privadas y permiten asignar únicamente los roles Veterinario o Recepción.</span></div>
-              <div className="table-wrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Registro</th></tr></thead><tbody>{profiles.map((user) => <tr key={user.id}><td><div className="name-cell"><span className="avatar table-avatar">{initials(user.display_name)}</span><strong>{user.display_name}</strong></div></td><td>{roleLabels[user.role]}</td><td><span className={`status ${user.is_active ? 'active' : 'inactive'}`}>{user.is_active ? 'Activo' : 'Inactivo'}</span></td><td>{formatDate(user.created_at)}</td></tr>)}</tbody></table></div>
+              <div className="page-actions"><div><p className="eyebrow">Administración</p><h2>Usuarios y roles</h2><p className="muted">Solo el dueño puede invitar o eliminar personas del sistema.</p></div><button className="button primary" onClick={() => { setNotice(''); setModal('invite') }}><Plus size={18} /> Invitar usuario</button></div>
+              <div className="alert"><ShieldCheck size={18} /><span>Las cuentas pueden tener el rol Veterinario o Recepción. Al eliminarlas, su historial permanece.</span></div>
+              <div className="table-wrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Registro</th><th className="actions-column">Acciones</th></tr></thead><tbody>{profiles.map((user) => <tr key={user.id}><td><div className="name-cell"><span className="avatar table-avatar">{initials(user.display_name)}</span><strong>{user.display_name}</strong></div></td><td>{roleLabels[user.role]}</td><td><span className={`status ${user.is_active ? 'active' : 'inactive'}`}>{user.is_active ? 'Activo' : 'Inactivo'}</span></td><td>{formatDate(user.created_at)}</td><td className="actions-column">{user.role === 'owner' ? <span className="muted">Protegido</span> : <button className="icon-button danger-icon" onClick={() => { setNotice(''); setUserToDelete(user) }} aria-label={`Eliminar a ${user.display_name}`} title="Eliminar usuario"><Trash2 size={17} /></button>}</td></tr>)}</tbody></table></div>
             </section>
           )}
         </div>
@@ -474,6 +520,7 @@ function Workspace({ session }: { session: Session }) {
 
       {modal === 'pet' && <Modal title="Registrar mascota" onClose={() => setModal(null)}><PetForm onClose={() => setModal(null)} onSaved={loadData} /></Modal>}
       {modal === 'invite' && <Modal title="Invitar usuario" onClose={() => setModal(null)}><InviteUserForm onClose={() => setModal(null)} onInvited={async () => { await loadData(); setNotice('Invitación enviada. La persona debe revisar su correo para crear su contraseña.') }} /></Modal>}
+      {userToDelete && <Modal title="Eliminar usuario" onClose={() => setUserToDelete(null)}><DeleteUserForm user={userToDelete} onClose={() => setUserToDelete(null)} onDeleted={async () => { await loadData(); setNotice('Usuario eliminado. Sus acciones, expedientes y archivos se conservaron.') }} /></Modal>}
     </div>
   )
 }

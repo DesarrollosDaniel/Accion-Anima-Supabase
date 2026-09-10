@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(21);
+select plan(23);
 
 select has_table('public', 'profiles', 'profiles table exists');
 select has_table('public', 'pets', 'pets table exists');
@@ -93,6 +93,29 @@ select has_index(
   'profiles',
   'profiles_single_owner_idx',
   'only one owner profile can exist'
+);
+
+select has_function(
+  'public',
+  'prepare_auth_user_deletion',
+  array['uuid'],
+  'owner deletion preparation function exists'
+);
+
+select results_eq(
+  $$
+    select count(*)::bigint
+    from pg_constraint as constraint_record
+    join pg_class as source_table on source_table.oid = constraint_record.conrelid
+    join pg_namespace as source_schema on source_schema.oid = source_table.relnamespace
+    where constraint_record.contype = 'f'
+      and constraint_record.confrelid = 'auth.users'::regclass
+      and source_schema.nspname = 'public'
+      and source_table.relname <> 'profiles'
+      and constraint_record.confdeltype <> 'n'
+  $$,
+  $$ values (0::bigint) $$,
+  'user deletion preserves every public activity row'
 );
 
 select * from finish();

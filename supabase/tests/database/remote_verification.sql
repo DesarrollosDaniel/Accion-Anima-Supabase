@@ -73,4 +73,16 @@ select jsonb_build_object(
   )
   , 'owners_removed', to_regclass('public.owners') is null
   , 'appointments_removed', to_regclass('public.appointments') is null
+  , 'user_deletion_helper', to_regprocedure('public.prepare_auth_user_deletion(uuid)') is not null
+  , 'activity_fks_preserved', not exists (
+    select 1
+    from pg_constraint as constraint_record
+    join pg_class as source_table on source_table.oid = constraint_record.conrelid
+    join pg_namespace as source_schema on source_schema.oid = source_table.relnamespace
+    where constraint_record.contype = 'f'
+      and constraint_record.confrelid = 'auth.users'::regclass
+      and source_schema.nspname = 'public'
+      and source_table.relname <> 'profiles'
+      and constraint_record.confdeltype <> 'n'
+  )
 ) as verification;

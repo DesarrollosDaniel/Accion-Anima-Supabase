@@ -9,7 +9,12 @@ interface InviteRequest {
   role?: unknown
 }
 
+interface DeleteRequest {
+  userId?: unknown
+}
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status })
@@ -17,7 +22,7 @@ function errorResponse(message: string, status: number) {
 
 export default {
   fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
-    if (req.method !== "POST") {
+    if (req.method !== "POST" && req.method !== "DELETE") {
       return errorResponse("Método no permitido.", 405)
     }
 
@@ -33,19 +38,70 @@ export default {
       .single()
 
     if (callerError || !caller || !caller.is_active || caller.role !== "owner") {
-      return errorResponse("Solo el usuario dueño puede invitar usuarios.", 403)
+      return errorResponse("Solo el usuario dueño puede administrar usuarios.", 403)
     }
 
-    let input: InviteRequest
+    let input: InviteRequest | DeleteRequest
     try {
       input = await req.json()
     } catch {
       return errorResponse("La solicitud no contiene datos válidos.", 400)
     }
 
-    const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : ""
-    const displayName = typeof input.displayName === "string" ? input.displayName.trim() : ""
-    const role = input.role as StaffRole
+    if (req.method === "DELETE") {
+      const deleteInput = input as DeleteRequest
+      const userId = typeof deleteInput.userId === "string" ? deleteInput.userId.trim() : ""
+      if (!uuidPattern.test(userId)) {
+        return errorResponse("El usuario indicado no es válido.", 400)
+      }
+      if (userId === callerId) {
+        return errorResponse("El usuario dueño no puede eliminar su propia cuenta.", 400)
+      }
+
+      const { data: target, error: targetError } = await ctx.supabaseAdmin
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .single()
+
+      if (targetError || !target) {
+        return errorResponse("El usuario ya no existe.", 404)
+      }
+      if (target.role === "owner") {
+        return errorResponse("La cuenta del dueño no se puede eliminar.", 400)
+      }
+
+      const { error: prepareError } = await ctx.supabase
+        .rpc("prepare_auth_user_deletion", { target_user_id: userId })
+
+      if (prepareError) {
+        console.error("Could not prepare Auth user deletion", prepareError)
+        return errorResponse("No fue posible preparar la eliminación sin perder archivos.", 500)
+      }
+
+      const { error: deleteError } = await ctx.supabaseAdmin.auth.admin.deleteUser(userId, false)
+      if (deleteError) {
+        console.error("Could not delete Auth user", deleteError)
+        return errorResponse("No fue posible eliminar el usuario. Intenta de nuevo.", 500)
+      }
+
+      const { error: auditError } = await ctx.supabaseAdmin.from("audit_events").insert({
+        actor_id: callerId,
+        action: "DELETE",
+        entity_table: "profiles",
+        entity_id: userId,
+      })
+      if (auditError) console.error("Could not record Auth user deletion", auditError)
+
+      return Response.json({
+        message: "Usuario eliminado. Su actividad y sus archivos se conservaron.",
+      })
+    }
+
+    const inviteInput = input as InviteRequest
+    const email = typeof inviteInput.email === "string" ? inviteInput.email.trim().toLowerCase() : ""
+    const displayName = typeof inviteInput.displayName === "string" ? inviteInput.displayName.trim() : ""
+    const role = inviteInput.role as StaffRole
 
     if (!emailPattern.test(email) || email.length > 254) {
       return errorResponse("Escribe un correo electrónico válido.", 400)
