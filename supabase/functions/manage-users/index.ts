@@ -3,10 +3,11 @@ import { withSupabase } from "@supabase/server"
 
 type StaffRole = "veterinarian" | "reception"
 
-interface InviteRequest {
+interface CreateUserRequest {
   email?: unknown
   displayName?: unknown
   role?: unknown
+  password?: unknown
 }
 
 interface DeleteRequest {
@@ -41,7 +42,7 @@ export default {
       return errorResponse("Solo el usuario dueño puede administrar usuarios.", 403)
     }
 
-    let input: InviteRequest | DeleteRequest
+    let input: CreateUserRequest | DeleteRequest
     try {
       input = await req.json()
     } catch {
@@ -71,14 +72,6 @@ export default {
         return errorResponse("La cuenta del dueño no se puede eliminar.", 400)
       }
 
-      const { error: prepareError } = await ctx.supabase
-        .rpc("prepare_auth_user_deletion", { target_user_id: userId })
-
-      if (prepareError) {
-        console.error("Could not prepare Auth user deletion", prepareError)
-        return errorResponse("No fue posible preparar la eliminación sin perder archivos.", 500)
-      }
-
       const { error: deleteError } = await ctx.supabaseAdmin.auth.admin.deleteUser(userId, false)
       if (deleteError) {
         console.error("Could not delete Auth user", deleteError)
@@ -98,10 +91,11 @@ export default {
       })
     }
 
-    const inviteInput = input as InviteRequest
-    const email = typeof inviteInput.email === "string" ? inviteInput.email.trim().toLowerCase() : ""
-    const displayName = typeof inviteInput.displayName === "string" ? inviteInput.displayName.trim() : ""
-    const role = inviteInput.role as StaffRole
+    const createInput = input as CreateUserRequest
+    const email = typeof createInput.email === "string" ? createInput.email.trim().toLowerCase() : ""
+    const displayName = typeof createInput.displayName === "string" ? createInput.displayName.trim() : ""
+    const password = typeof createInput.password === "string" ? createInput.password : ""
+    const role = createInput.role as StaffRole
 
     if (!emailPattern.test(email) || email.length > 254) {
       return errorResponse("Escribe un correo electrónico válido.", 400)
@@ -112,39 +106,58 @@ export default {
     if (role !== "veterinarian" && role !== "reception") {
       return errorResponse("Selecciona un rol permitido.", 400)
     }
+    if (password.length < 10 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+      return errorResponse("La contraseña debe tener al menos 10 caracteres, una mayúscula, una minúscula y un número.", 400)
+    }
 
-    const appUrl = Deno.env.get("APP_URL") ?? "http://127.0.0.1:5173/"
-    const redirectUrl = new URL(appUrl)
-    redirectUrl.searchParams.set("invite", "1")
-
-    const { data: invitation, error: inviteError } = await ctx.supabaseAdmin.auth.admin
-      .inviteUserByEmail(email, {
-        data: { display_name: displayName },
-        redirectTo: redirectUrl.toString(),
+    const { data: created, error: createError } = await ctx.supabaseAdmin.auth.admin
+      .createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { display_name: displayName },
       })
 
-    if (inviteError || !invitation.user) {
-      const duplicate = inviteError?.message.toLowerCase().includes("already")
+    if (createError || !created.user) {
+      const detail = createError?.message.toLowerCase() ?? ""
+      const duplicate = detail.includes("already") || detail.includes("registered") || detail.includes("exists")
+      const invalidPassword = detail.includes("password")
       return errorResponse(
-        duplicate ? "Ya existe una cuenta con ese correo." : "No fue posible enviar la invitación. Intenta de nuevo.",
+        duplicate
+          ? "Ya existe una cuenta con ese correo."
+          : invalidPassword
+            ? "Supabase rechazó la contraseña. Usa una contraseña distinta y más segura."
+            : "No fue posible crear el acceso. Revisa los datos e intenta de nuevo.",
         duplicate ? 409 : 400,
       )
     }
 
-    const { error: profileError } = await ctx.supabaseAdmin
+    const { data: profile, error: profileError } = await ctx.supabaseAdmin
       .from("profiles")
       .update({ display_name: displayName, role })
-      .eq("id", invitation.user.id)
+      .eq("id", created.user.id)
+      .select("id")
+      .single()
 
-    if (profileError) {
-      console.error("Invitation created but profile update failed", profileError)
-      return errorResponse("La invitación se creó, pero no fue posible asignar el rol. Contacta al administrador.", 500)
+    if (profileError || !profile) {
+      console.error("User created but profile update failed", profileError)
+      const { error: rollbackError } = await ctx.supabaseAdmin.auth.admin.deleteUser(created.user.id, false)
+      if (rollbackError) console.error("Could not roll back incomplete user", rollbackError)
+      return errorResponse("No fue posible asignar el rol; el acceso no fue habilitado. Intenta de nuevo.", 500)
     }
 
+    const { error: auditError } = await ctx.supabaseAdmin.from("audit_events").insert({
+      actor_id: callerId,
+      action: "INSERT",
+      entity_table: "profiles",
+      entity_id: created.user.id,
+    })
+    if (auditError) console.error("Could not record Auth user creation", auditError)
+
     return Response.json({
-      message: "Invitación enviada.",
+      message: "Acceso creado y listo para usarse.",
       user: {
-        id: invitation.user.id,
+        id: created.user.id,
         email,
         displayName,
         role,

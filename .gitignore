@@ -1,7 +1,7 @@
 # Datos reales y archivos clínicos: nunca publicar
-/accion_animal_db.sql
-/legacy-data/
 /uploaded/
+/legacy-data/
+/*.sql
 
 # Configuración local y secretos
 .env

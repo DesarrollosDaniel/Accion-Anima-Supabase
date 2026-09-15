@@ -1,91 +1,50 @@
-# Análisis del respaldo MySQL
+# Informe de sincronización MySQL → Supabase
 
-Archivo analizado: `accion_animal_db.sql`.
+Fecha de ejecución: 10 de septiembre de 2026.
 
-El respaldo contiene información personal y clínica real. Debe mantenerse fuera del repositorio y transferirse únicamente por medios privados. Este informe no reproduce nombres, teléfonos, direcciones ni contenido médico.
+Origen: `accion_animal (5).sql` y carpeta local `uploaded/`.
 
-## Inventario
+Destino: proyecto Supabase `accion_animal` (`hvfubwyzarikudisbwfy`). Los binarios permanecen en `uploaded/`; Supabase guarda únicamente los datos y las rutas locales. Este informe no reproduce nombres, teléfonos, direcciones ni contenido médico.
 
-- tamaño aproximado: 12.5 MB;
-- 39,745 líneas de contenido SQL;
-- 14,979 filas de mascotas;
-- 24,416 filas de expedientes;
-- 4,884 referencias textuales a rutas clínicas históricas;
-- dos tablas: `mascota` y `expediente`.
+## Resultado
 
-## Estructura heredada
+- 15,009 mascotas importadas;
+- 24,467 expedientes importados;
+- 6,650 asociaciones entre expedientes y archivos locales;
+- 11,753 registros de peso derivados de valores históricos válidos;
+- 2 usuarios de Supabase y sus 2 perfiles conservados sin reemplazo;
+- cero expedientes o archivos huérfanos en la base de destino;
+- 15,005 mascotas activas y 4 inactivas;
+- todos los identificadores MySQL de mascotas se conservaron en `legacy_id`.
 
-### `mascota`
+El volcado contenía 24,470 expedientes. Tres hacían referencia a mascotas inexistentes y no se importaron. La zona temporal utilizada para validar la carga fue eliminada al terminar.
 
-Contiene en una sola fila los datos de la mascota y los del responsable: nombre, nacimiento, peso, características, especie, raza, alimento, sexo, esterilización, baja, foto, nombre del responsable, teléfono, dirección, medio de referencia y fecha.
+## Archivos locales
 
-### `expediente`
+La carpeta `uploaded/` contiene 8,555 archivos y ocupa aproximadamente 15.8 GB:
 
-Contiene historia clínica, examen físico, diagnóstico, tratamiento, presupuesto, rutas de fotos y archivos, mascota asociada, profesional, signos clínicos y fecha.
+- 1,664 archivos en la raíz;
+- 6,891 archivos dentro de directorios clínicos;
+- 1,619 fotos principales pudieron cruzarse con un archivo físico;
+- 13,390 referencias históricas a foto principal no tienen un archivo físico identificable;
+- 41 directorios clínicos referenciados en el SQL no existen en la carpeta recibida.
 
-## Problemas que no se trasladarán literalmente
+Las rutas se conservaron con el prefijo `uploaded/` para que la aplicación las sirva mediante el servidor local. No se copiaron imágenes a Supabase Storage.
 
-- no se intentará deduplicar a los tutores: por decisión funcional, nombre y teléfono permanecerán dentro de cada mascota y podrán repetirse;
-- ausencia de una clave foránea declarada entre expedientes y mascotas;
-- identificadores enteros autoincrementales predecibles;
-- pesos almacenados como `float`;
-- presupuestos almacenados como texto;
-- valores clínicos mezclados con texto libre;
-- valores booleanos expresados con números o textos como sí/no;
-- errores históricos de nombres, por ejemplo `estirilizado`;
-- columnas llamadas `fecha_creacion` que se actualizan automáticamente con cada modificación;
-- rutas locales de `uploaded/` guardadas directamente en la tabla;
-- falta de campos separados `created_at` y `updated_at`;
-- falta de auditoría sobre quién creó, editó, dio de baja o eliminó un registro.
+## Seguridad y permisos
 
-## Destino propuesto en PostgreSQL
+- recepción puede consultar, pero no crear ni modificar mascotas o información clínica;
+- veterinaria/o puede crear y modificar mascotas y expedientes, incluido cambiar una mascota a `deceased`;
+- únicamente el dueño puede eliminar información y administrar usuarios;
+- RLS permanece habilitado en las tablas públicas;
+- se conservó un respaldo privado previo a la sincronización en el esquema `backup_20260910_pre_legacy_sync`;
+- `auth.users` quedó fuera de la sustitución y del respaldo de datos clínicos.
 
-- `profiles`: usuario, nombre visible, estado y rol (`owner`, `veterinarian` o `reception`);
-- `pets`: mascotas, nombre y teléfono del tutor, foto principal y estado;
-- `clinical_records`: expediente o consulta clínica;
-- `clinical_files`: metadatos y objeto de Storage asociado al expediente;
-- `vaccinations`: vacunas y próximas dosis;
-- `medications`: prescripciones y tratamientos farmacológicos;
-- `allergies`: alergias conocidas;
-- `pet_notes`: notas generales o internas;
-- `weight_records`: historial de peso;
-- `audit_events`: acciones sensibles y cambios de estado.
+## Archivos de implementación
 
-Los identificadores nuevos serán UUID. Los identificadores MySQL se conservarán temporalmente en columnas `legacy_id` únicas para relacionar la importación y comprobarla.
+- `scripts/prepare-legacy-sync.mjs`: analiza el volcado y el inventario local, y genera lotes SQL temporales sin duplicar datos personales dentro del repositorio;
+- `supabase/migrations/20260910191737_align_roles_for_legacy_sync.sql`: alinea RLS con los roles solicitados y permite asociar una misma ruta histórica con expedientes diferentes.
 
-## Estrategia de migración
+## Pendiente operativo
 
-1. Crear el esquema nuevo, restricciones, índices y RLS mediante migraciones versionadas.
-2. Importar mascotas conservando `legacy_id`, incluido el nombre y teléfono del tutor en cada fila.
-3. Normalizar valores de especie, sexo, esterilización y baja sin descartar el valor original durante la validación.
-4. Importar expedientes y comprobar que cada `ID_m` tenga una mascota válida.
-5. Cuando llegue `uploaded/`, inventariar archivos, calcular hash, MIME y tamaño, y cruzarlos con las 4,884 rutas registradas.
-6. Subir fotos principales a `pet-photos` y material clínico a `clinical-files` usando rutas basadas en UUID.
-7. Crear las filas de `clinical_files` solo después de confirmar cada carga.
-8. Comparar conteos, relaciones, archivos faltantes y muestras antes de aceptar la migración.
-9. Conservar el respaldo original sin cambios hasta validar el nuevo sistema.
-
-## Seguridad prevista
-
-- todas las tablas expuestas usarán RLS;
-- existirá una sola cuenta dueña y será la única autorizada para administrar cuentas y roles;
-- el registro público estará deshabilitado y las cuentas se crearán mediante invitación;
-- una Edge Function autenticada verificará el rol del dueño antes de llamar a la API administrativa de Supabase Auth;
-- la clave secreta utilizada por esa función permanecerá exclusivamente en Supabase;
-- todos los usuarios autenticados podrán consultar todos los registros;
-- recepción podrá crear y editar mascotas y sus datos de tutor;
-- solo veterinarias/os podrán crear o editar información clínica y ejecutar bajas, reactivaciones o eliminaciones;
-- las fotos principales serán públicas, pero su carga, reemplazo y borrado requerirán autenticación;
-- los archivos clínicos serán privados;
-- la aplicación de GitHub Pages utilizará únicamente la URL del proyecto y la clave publicable de Supabase;
-- la clave secreta o `service_role` no se incluirá en el navegador ni en GitHub.
-
-## Validaciones pendientes al recibir `uploaded/`
-
-- archivos referenciados que no existen;
-- archivos existentes sin referencia en la base;
-- duplicados por contenido;
-- extensiones y tipos MIME no permitidos;
-- nombres incompatibles con Storage;
-- tamaño total y límites necesarios;
-- fotos principales que no incluyen extensión o cuyo nombre histórico es ambiguo.
+El asesor de seguridad de Supabase reporta que la protección contra contraseñas filtradas está desactivada. Esta opción debe habilitarse desde la configuración de Auth del proyecto.
