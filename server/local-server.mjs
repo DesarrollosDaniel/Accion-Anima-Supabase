@@ -137,7 +137,7 @@ async function serveFile(req, res, filePath, options = {}) {
     'Content-Type': type,
     'Content-Length': fileStat.size,
     'X-Content-Type-Options': 'nosniff',
-    'Cache-Control': options.private ? 'private, no-cache' : options.noCache ? 'no-cache' : 'public, max-age=31536000, immutable',
+    'Cache-Control': options.private ? 'private, no-cache' : options.noCache ? 'no-store' : 'public, max-age=31536000, immutable',
   }
   if (options.private && !type.startsWith('image/') && type !== 'application/pdf' && !type.startsWith('video/')) {
     headers['Content-Disposition'] = `attachment; filename*=UTF-8''${encodeURIComponent(path.basename(filePath))}`
