@@ -2,24 +2,28 @@
 
 La opción recomendada es usar el **Programador de tareas de Windows** en la PC que almacenará la carpeta `uploaded`. De esta manera, el servidor local se iniciará automáticamente al encender la computadora, incluso si nadie ha iniciado sesión.
 
+En esta PC, Windows y Node.js permanecen en `C:`, mientras que Acción Animal y la carpeta `uploaded` están en `E:`.
+
 ## Crear la tarea automática
 
-1. Abre el **Programador de tareas** de Windows.
-2. En el panel derecho, selecciona **Crear tarea**. No uses “Crear tarea básica”.
-3. En la pestaña **General**, configura:
+1. En Windows 11, abre **Inicio**, escribe `Programador de tareas` y selecciona **Ejecutar como administrador**. No abras el **Administrador de tareas**. Si la búsqueda no lo muestra, presiona `Windows + R`, escribe `taskschd.msc` y pulsa **Aceptar**.
+2. En la columna izquierda, selecciona **Biblioteca del Programador de tareas**.
+3. En el panel **Acciones** de la derecha, selecciona **Crear tarea...**. Si ese panel no aparece, usa el menú superior **Acción → Crear tarea...**. No uses **Crear tarea básica...**.
+4. En la pestaña **General**, configura:
 
    - Nombre: `Accion Animal - Servidor local`
    - Activa **Ejecutar tanto si el usuario inició sesión como si no**.
    - Activa **Ejecutar con los privilegios más altos**.
-   - Selecciona la versión de Windows instalada en la PC.
+   - En **Configurar para**, selecciona **Windows 10** si Windows 11 no aparece; es la opción normal del Programador de tareas de Windows 11.
 
-4. En la pestaña **Desencadenadores**, crea uno con estos valores:
+5. Abre la pestaña **Desencadenadores**, pulsa **Nuevo...** y configura:
 
    - Iniciar la tarea: **Al iniciar el sistema**.
-   - Retrasar la tarea: **30 segundos**.
+   - En **Configuración avanzada**, marca **Retrasar la tarea durante** y elige **30 segundos**.
    - Estado: **Habilitado**.
+   - Pulsa **Aceptar**.
 
-5. En la pestaña **Acciones**, selecciona **Iniciar un programa** y configura:
+6. Abre la pestaña **Acciones**, pulsa **Nueva...**, deja **Iniciar un programa** y configura:
 
    Programa o script:
 
@@ -36,18 +40,18 @@ La opción recomendada es usar el **Programador de tareas de Windows** en la PC 
    Iniciar en:
 
    ```text
-   D:\AccionAnimal\app\accion-animal-supabase
+   E:\AccionAnimal\app\accion-animal-supabase
    ```
 
-   Ajusta la ruta `D:\AccionAnimal\app\accion-animal-supabase` si el proyecto se instala en otro lugar. El campo **Iniciar en** no debe llevar comillas.
+   El campo **Iniciar en (opcional)** no debe llevar comillas. Pulsa **Aceptar**.
 
-6. En la pestaña **Condiciones**:
+7. En la pestaña **Condiciones**:
 
    - Desmarca **Iniciar la tarea solamente si el equipo está conectado a corriente alterna**.
    - Desmarca **Detener si el equipo cambia a alimentación por batería**.
    - Activa **Activar el equipo para ejecutar esta tarea**, si está disponible.
 
-7. En la pestaña **Configuración**:
+8. En la pestaña **Configuración**:
 
    - Activa **Permitir que la tarea se ejecute a petición**.
    - Activa **Si la tarea falla, reiniciar cada 1 minuto**.
@@ -55,7 +59,7 @@ La opción recomendada es usar el **Programador de tareas de Windows** en la PC 
    - En **Si la tarea ya se está ejecutando**, selecciona **No iniciar una instancia nueva**.
    - Desactiva **Detener la tarea si se ejecuta durante más de...**.
 
-8. Guarda la tarea. Windows puede solicitar la contraseña del usuario de esa PC.
+9. Pulsa **Aceptar** para guardar la tarea. Windows puede solicitar la contraseña del usuario de esa PC.
 
 ## Probar la tarea
 
@@ -106,9 +110,9 @@ Desde el Programador de tareas:
 Después de actualizar el código de la aplicación, ejecuta en PowerShell:
 
 ```powershell
-cd "D:\AccionAnimal\app\accion-animal-supabase"
-npm ci
-npm run build
+cd "E:\AccionAnimal\app\accion-animal-supabase"
+npm.cmd ci
+npm.cmd run build
 ```
 
 Finalmente, usa **Finalizar** y después **Ejecutar** en el Programador de tareas para cargar la nueva versión.

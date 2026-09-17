@@ -127,6 +127,15 @@ function safeFileName(value: string) {
   return normalized.slice(0, 160) || 'archivo'
 }
 
+function randomUuid() {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
 function fileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
@@ -148,14 +157,14 @@ function PetEditForm({ pet, latestWeight, vaccinations, note, onSaved, onCancel 
   const availableVaccines = [...new Set([...vaccinesForSpecies(pet.species), ...vaccinations.map((entry) => entry.vaccine_name)])]
   const [vaccinationRows, setVaccinationRows] = useState<Vaccination[]>(() => {
     const rows = [...vaccinations]
-    if (rows.length < availableVaccines.length) rows.push({ id: crypto.randomUUID(), vaccine_name: '', administered_on: localDateTimeValue().slice(0, 10) })
-    return rows.length ? rows : [{ id: crypto.randomUUID(), vaccine_name: '', administered_on: localDateTimeValue().slice(0, 10) }]
+    if (rows.length < availableVaccines.length) rows.push({ id: randomUuid(), vaccine_name: '', administered_on: localDateTimeValue().slice(0, 10) })
+    return rows.length ? rows : [{ id: randomUuid(), vaccine_name: '', administered_on: localDateTimeValue().slice(0, 10) }]
   })
 
   function changeVaccine(index: number, vaccineName: string) {
     setVaccinationRows((current) => {
       const next = current.map((entry, entryIndex) => entryIndex === index ? { ...entry, vaccine_name: vaccineName } : entry)
-      if (vaccineName && index === current.length - 1 && current.length < availableVaccines.length) next.push({ id: crypto.randomUUID(), vaccine_name: '', administered_on: localDateTimeValue().slice(0, 10) })
+      if (vaccineName && index === current.length - 1 && current.length < availableVaccines.length) next.push({ id: randomUuid(), vaccine_name: '', administered_on: localDateTimeValue().slice(0, 10) })
       return next
     })
   }
@@ -163,8 +172,8 @@ function PetEditForm({ pet, latestWeight, vaccinations, note, onSaved, onCancel 
   function removeVaccine(index: number) {
     setVaccinationRows((current) => {
       const next = current.filter((_, entryIndex) => entryIndex !== index)
-      if (next.every((entry) => entry.vaccine_name) && next.length < availableVaccines.length) next.push({ id: crypto.randomUUID(), vaccine_name: '', administered_on: localDateTimeValue().slice(0, 10) })
-      return next.length ? next : [{ id: crypto.randomUUID(), vaccine_name: '', administered_on: localDateTimeValue().slice(0, 10) }]
+      if (next.every((entry) => entry.vaccine_name) && next.length < availableVaccines.length) next.push({ id: randomUuid(), vaccine_name: '', administered_on: localDateTimeValue().slice(0, 10) })
+      return next.length ? next : [{ id: randomUuid(), vaccine_name: '', administered_on: localDateTimeValue().slice(0, 10) }]
     })
   }
 
@@ -744,7 +753,7 @@ export function PetDetails({ pet, role, userId, professionalName, onPetChanged, 
           {canEdit && <label className="photo-change-button"><Camera size={15} /> {changingPhoto ? 'Cambiando…' : 'Cambiar foto'}<input type="file" accept=".bmp,.gif,.jfif,.jpeg,.jpg,.png,.webp,image/*" disabled={changingPhoto} onChange={(event) => void changePhoto(event)} /></label>}
           {photoMessage && <span className="photo-message" role="status">{photoMessage}</span>}
         </div>
-        <div className="pet-profile-heading"><p className="eyebrow">Ficha completa</p><h3>{pet.name}</h3><span className={`status ${pet.status}`}>{displayStatus(pet.status)}</span>{canEdit && <div className="pet-profile-actions"><details className="action-menu"><summary className="icon-button action-menu-trigger" aria-label={`Acciones de ${pet.name}`} title="Acciones"><MoreHorizontal size={20} /></summary><div className="action-menu-popover" role="menu"><button type="button" role="menuitem" onClick={() => setEditingPet(true)}><Pencil size={15} /> Editar información</button><button type="button" role="menuitem" className={pet.status === 'active' ? 'warning' : ''} disabled={changingStatus} onClick={() => void changeStatus()}>{pet.status === 'active' ? <><Trash2 size={15} /> Mandar a decesos</> : <><RotateCcw size={15} /> Reactivar mascota</>}</button><button type="button" role="menuitem" className="destructive" onClick={() => setDeleteTarget({ kind: 'pet' })}><Trash2 size={15} /> Eliminar mascota</button></div></details></div>}</div>
+        <div className="pet-profile-heading"><p className="eyebrow">Ficha completa</p><h3>{pet.name}</h3><span className={`status ${pet.status}`}>{displayStatus(pet.status)}</span>{canEdit && <div className="pet-profile-actions"><details className="action-menu"><summary className="icon-button action-menu-trigger" aria-label={`Acciones de ${pet.name}`} title="Acciones"><MoreHorizontal size={20} /></summary><div className="action-menu-popover" role="menu"><button type="button" role="menuitem" onClick={() => setEditingPet(true)}><Pencil size={15} /> Editar información</button><button type="button" role="menuitem" className={pet.status === 'active' ? 'warning' : ''} disabled={changingStatus} onClick={() => void changeStatus()}>{pet.status === 'active' ? <><span aria-hidden="true">🌈</span> Mandar a decesos</> : <><RotateCcw size={15} /> Reactivar mascota</>}</button><button type="button" role="menuitem" className="destructive" onClick={() => setDeleteTarget({ kind: 'pet' })}><Trash2 size={15} /> Eliminar mascota</button></div></details></div>}</div>
         {note && <div className="pet-alert-note"><Info size={22} /><div><strong>Información clave sobre la mascota o tutor</strong><p>{note.body}</p></div></div>}
         <div className="detail-grid">
           <DetailItem label="Especie" value={valueOrDash(pet.species)} />
