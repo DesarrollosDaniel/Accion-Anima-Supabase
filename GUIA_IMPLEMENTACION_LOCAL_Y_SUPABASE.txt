@@ -1,0 +1,382 @@
+GUÍA DE PLANIFICACIÓN: ACCIÓN ANIMAL LOCAL CON SUPABASE SINCRONIZADO
+Fecha: 24 de septiembre de 2026
+
+ESTADO Y ALCANCE
+
+Este documento es una guía para una implementación futura. Crear este archivo
+no instala servicios, no cambia el código, no modifica Supabase y no migra datos.
+Las funciones descritas requieren desarrollo y pruebas antes de utilizarlas.
+
+Decisiones confirmadas:
+- Esta PC se utilizará para desarrollo y pruebas; no será el servidor definitivo.
+- El servidor definitivo será una computadora Windows 11 del cliente.
+- Todos los equipos del consultorio trabajarán contra ese servidor local.
+- Supabase conservará una copia sincronizada de los datos de negocio.
+- No se habilitarán escrituras clínicas independientes desde fuera del consultorio.
+- Fotografías y documentos seguirán en el disco del servidor, con respaldo aparte.
+
+Arquitectura prevista:
+
+Equipos del consultorio
+        |
+        v
+Servidor Windows 11 del cliente
+  Aplicación React + API Node.js
+  PostgreSQL local + cola de sincronización
+  Carpeta de fotografías y documentos
+        |
+        v
+Supabase en la nube
+  Copia sincronizada de datos de negocio
+  Administración de cuentas en línea
+
+La aplicación guardará primero localmente, incluso cuando haya internet.
+Así no será necesario cambiar de página o de base durante una desconexión.
+La continuidad depende de que funcionen el servidor, su disco y la red local.
+Una caída eléctrica o del servidor no se resuelve simplemente con este diseño.
+
+1. QUÉ CONSERVAR ANTES DE EMPEZAR
+
+Responsable: soporte/desarrollo, en esta PC y con acceso autorizado al cliente.
+
+1.1 Inventariar la instalación real del cliente: versión de aplicación, carpeta
+    de archivos, proyecto Supabase, tareas de arranque y configuración de red.
+    No asumir que coincide exactamente con lo que existe en esta PC.
+
+1.2 Respaldar el estado completo del código actual, incluidos cambios sin commit
+    y archivos nuevos. Al revisar el repositorio había modificaciones pendientes
+    en aplicación y documentación. Un clon de Git puede no incluirlas.
+
+1.3 Revisar esos cambios y crear un punto de recuperación en Git. Conservar además
+    una copia fechada. No ejecutar reset, clean ni reemplazos de carpetas para
+    preparar el trabajo.
+
+1.4 No registrar en Git contraseñas, claves privilegiadas, archivos .env reales,
+    datos clínicos, respaldos ni la carpeta uploaded. Guardar configuración
+    sensible separadamente y cifrada.
+
+1.5 Respaldar base, esquema, políticas, funciones, migraciones, Edge Functions,
+    configuración y archivos. Revisar expresamente cómo se recuperarán usuarios
+    de Auth: una exportación SQL general no garantiza incluirlos.
+
+1.6 Restaurar una copia en un entorno independiente. Comprobar expedientes,
+    relaciones, usuarios y apertura de adjuntos. Registrar fecha y resultados.
+    Un archivo de respaldo que nunca se ha restaurado no demuestra recuperación.
+
+Resultado necesario: estado actual conservado y recuperación probada antes de
+cualquier modificación de producción.
+
+2. ¿SE NECESITA OTRO PROYECTO O CARPETA?
+
+Sí a otra carpeta de trabajo y otro entorno de pruebas. No es necesario rehacer
+el producto desde cero ni mantener dos aplicaciones distintas permanentemente.
+
+2.1 En esta PC, utilizar una carpeta como:
+    C:\Desarrollo\AccionAnimalOffline
+
+2.2 Crear un checkout separado y la rama codex/operacion-local-sincronizada desde
+    el punto de recuperación previamente revisado. Mantener intacta la carpeta
+    actual. Un worktree nuevo no copia automáticamente cambios sin commit.
+
+2.3 Crear un proyecto Supabase exclusivo de pruebas, con usuarios y datos
+    ficticios, y una base PostgreSQL local exclusiva para desarrollo.
+
+2.4 Preparar una carpeta de adjuntos de prueba. No apuntar al uploaded real.
+
+2.5 No copiar las credenciales de producción a la configuración de pruebas.
+    Separar las conexiones y mostrar claramente el nombre del entorno.
+    Añadir comprobaciones contra ejecuciones accidentales en producción.
+
+2.6 Si no es posible disponer de otro proyecto Supabase, resolver esa limitación
+    antes de probar escrituras remotas. No usar la base real como sustituto.
+
+2.7 Mantener bases activas fuera de OneDrive o carpetas sincronizadas. Un disco
+    de respaldo puede contener exportaciones, pero no debe sincronizar en vivo
+    los archivos internos de PostgreSQL.
+
+IMPORTANTE: GUIA_SUPABASE_LOCAL_SIN_INTERNET.md describe otra alternativa:
+Supabase completo en local y nube sin escrituras. No mezclar sus instrucciones
+con esta arquitectura de PostgreSQL local y sincronización desarrollada a medida.
+
+3. HERRAMIENTAS QUE SE PREPARARÁN
+
+- Node.js LTS compatible con la aplicación.
+- PostgreSQL y herramientas psql, pg_dump y pg_restore.
+- Librería pg para acceso a PostgreSQL desde Node.js.
+- Git y dependencias fijadas en package-lock.json.
+- Proyecto Supabase de pruebas.
+- Arranque automático de Windows, cuenta de servicio y registros de errores.
+- HTTPS local con certificados confiables para los equipos del consultorio.
+- Medio de respaldo externo y almacenamiento cifrado fuera del servidor.
+
+Antes de instalar, verificar compatibilidad, documentación vigente de Supabase
+y versiones disponibles. Documentar las versiones exactas probadas y repetirlas
+en el servidor final. No actualizar producción a versiones no ensayadas.
+
+No se requiere instalar la plataforma Supabase completa en la PC del cliente.
+Docker y supabase start pueden servir en desarrollo si se decide utilizarlos,
+pero no constituyen por sí solos la solución de producción descrita aquí.
+
+4. DESARROLLO NECESARIO: BASE LOCAL Y API
+
+Estos pasos son trabajo futuro de programación, no instrucciones para que el
+cliente cambie valores de configuración en la versión actual.
+
+4.1 Crear migraciones específicas para PostgreSQL local. Conservar UUID,
+    relaciones y validaciones de negocio. Adaptar referencias a auth.users,
+    auth.uid() y otras dependencias de Supabase; no copiar esquemas internos
+    indiscriminadamente.
+
+4.2 Añadir tablas para operaciones pendientes, confirmaciones, errores, auditoría
+    y estado de sincronización. Separar cuenta de migraciones y cuenta limitada
+    usada por la aplicación.
+
+4.3 Ampliar el servidor Node.js para gestionar mascotas, expedientes, vacunas,
+    notas, pesos y archivos. Actualmente sirve principalmente interfaz y archivos.
+
+4.4 Sustituir consultas clínicas directas a Supabase desde React por una API local,
+    por ejemplo /api/pets, /api/clinical-records y /api/sync/status.
+    Estas rutas son propuestas; todavía no representan funciones disponibles.
+
+4.5 Comprobar identidad, permisos y contenido en el servidor para cada operación.
+    No confiar en que ocultar un botón impide una acción no autorizada.
+    Revisar los permisos efectivos del código y migraciones, porque algunos
+    documentos actuales describen reglas diferentes.
+
+4.6 Usar transacciones para operaciones relacionadas: por ejemplo, mascota,
+    vacunas y nota inicial. Un fallo no debe dejar un alta incompleta presentada
+    como correcta.
+
+5. ACCESO SIN INTERNET
+
+5.1 Mantener administración de cuentas en Supabase y preparar acceso local para
+    usuarios previamente autorizados, vinculados con su UUID remoto.
+
+5.2 Implementar un proceso de alta de credenciales locales con identidad
+    verificada. No copiar contraseñas de Supabase ni almacenar contraseñas en
+    texto. Guardar únicamente hashes robustos, por ejemplo con Argon2id.
+
+5.3 Implementar sesiones locales persistentes y permisos revisados en cada
+    petición. Reiniciar el servidor no debe eliminar los datos o accesos locales.
+    Proteger las sesiones mediante HTTPS y cookies apropiadas.
+
+5.4 Mantener creación de cuentas y cambios remotos de rol como operaciones que
+    requieren conexión. Permitir al dueño bloquear una cuenta localmente de
+    inmediato, sin depender de internet.
+
+5.5 Valor inicial propuesto: hasta siete días sin validación remota correcta;
+    después se requiere conexión. Validar este plazo con el cliente antes del
+    desarrollo y mostrar la fecha límite al administrador.
+
+5.6 Al reconectar, aplicar bajas y cambios de permisos. Una revocación hecha en
+    la nube no puede conocerse durante una desconexión. Si hay operaciones de un
+    usuario revocado pendientes de envío, conservarlas para revisión; no perderlas
+    ni aceptarlas silenciosamente como si el usuario continuara autorizado.
+
+6. CÓMO DESARROLLAR LA SINCRONIZACIÓN
+
+Dirección habitual:
+- Datos clínicos: local hacia Supabase.
+- Cuentas y permisos: Supabase hacia local.
+
+6.1 Dentro de una misma transacción local, guardar el cambio y su operación
+    pendiente. Incluir identificador único, registro, versión de origen, usuario,
+    fecha y contenido de la operación.
+
+6.2 Ejecutar un trabajador en segundo plano al arrancar y periódicamente.
+    Comprobar disponibilidad del servicio remoto, no solo la conexión de Windows.
+    Procesar las dependencias: una mascota debe existir antes de su expediente.
+
+6.3 Crear una interfaz remota de sincronización limitada a este servicio. Usar
+    credenciales exclusivas, revocables y protegidas en el servidor. Nunca colocar
+    claves privilegiadas en React ni en variables públicas de Vite.
+
+6.4 Validar servidor, operaciones permitidas y atribución del usuario. Si el
+    servicio remoto usa privilegios que omiten RLS, implementar explícitamente
+    esos controles; no asumir que RLS seguirá protegiendo cada escritura.
+
+6.5 Aplicar el cambio remoto y registrar el identificador de operación en una
+    misma transacción. Si se reenvía, devolver la confirmación existente sin
+    duplicar el registro.
+
+6.6 Marcar localmente una operación como completada solo después de recibir
+    confirmación. Si se pierde la respuesta, reenviar de forma segura.
+
+6.7 Reintentar fallos temporales con espera creciente. Separar errores permanentes
+    de validación o permisos para revisión. No eliminar operaciones fallidas.
+
+6.8 Comparar versiones antes de aplicar actualizaciones. Si alguien modificó la
+    nube fuera del proceso previsto, conservar ambas propuestas y solicitar
+    conciliación. No usar automáticamente «gana el último en guardar».
+
+6.9 Transmitir eliminaciones mediante marcas y conservarlas el tiempo necesario
+    para recuperación. No borrar archivos físicos prematuramente.
+
+6.10 No basar la recuperación únicamente en eventos Realtime ni en fechas del
+     equipo. Las operaciones y confirmaciones deben ser duraderas y recuperables.
+
+6.11 Durante la carga inicial, importar un estado consistente y registrarlo como
+     punto de partida confirmado. No reenviar toda la importación como altas.
+     Si una restauración devuelve pendientes antiguos, la deduplicación remota
+     debe impedir que se ejecuten nuevamente.
+
+7. ARCHIVOS Y VISIBILIDAD DEL ESTADO
+
+7.1 Conservar rutas históricas de fotos y documentos.
+7.2 Guardar primero en archivos temporales y coordinar la confirmación con sus
+    metadatos. Una transacción SQL no revierte una escritura de disco.
+7.3 Implementar recuperación de archivos incompletos o huérfanos sin eliminar
+    contenido válido automáticamente.
+7.4 Mostrar conexión, última sincronización correcta, pendientes y errores.
+7.5 Indicar «guardado localmente» cuando todavía no existe confirmación remota.
+7.6 Respaldar adjuntos por separado: enviar metadatos a Supabase no sube sus bytes.
+
+8. PRUEBAS OBLIGATORIAS ANTES DE PRODUCCIÓN
+
+Ejecutar typecheck y build del proyecto, más pruebas de API, permisos y SQL.
+Preparar casos que comprueben el comportamiento, no solo que arranque el proceso.
+
+Probar como mínimo:
+1. Crear, editar y consultar con internet.
+2. Cortar internet manteniendo la red local y continuar trabajando.
+3. Iniciar sesión desconectado con usuarios preparados.
+4. Reiniciar el servidor sin internet y conservar datos y operaciones pendientes.
+5. Cortar conexión después del guardado remoto y antes de recibir respuesta:
+   el reintento no debe duplicar datos.
+6. Crear mascota, expediente y adjuntos desconectado y sincronizar dependencias.
+7. Comprobar permisos de dueño, veterinaria y recepción mediante API.
+8. Simular cambio remoto inesperado y comprobar que no se sobrescribe en silencio.
+9. Simular disco lleno, archivo incompleto y errores de validación.
+10. Comprobar bloqueos de usuarios y vencimiento del acceso sin conexión.
+11. Restaurar base, archivos y pendientes en otra instalación.
+12. Trabajar simultáneamente desde dos equipos del consultorio.
+
+Conservar resultados y marcar una versión concreta aprobada para instalar.
+
+9. PREPARAR EL WINDOWS 11 DEFINITIVO DEL CLIENTE
+
+9.1 Verificar recursos reales: memoria, SSD, espacio para datos y respaldos,
+    Ethernet, actualizaciones y disponibilidad de UPS para servidor y red.
+
+9.2 Si existe E:, utilizar esta estructura; en caso contrario usar C:\AccionAnimal:
+
+    E:\AccionAnimal\releases
+    E:\AccionAnimal\data\postgres
+    E:\AccionAnimal\uploaded
+    E:\AccionAnimal\config
+    E:\AccionAnimal\logs
+    E:\AccionAnimal\backups
+
+    backups en el mismo disco es solo una copia auxiliar, no protección frente
+    a pérdida o daño del servidor.
+
+9.3 Instalar las versiones previamente probadas. PostgreSQL deberá arrancar como
+    servicio y escuchar únicamente en el propio servidor.
+
+9.4 Configurar arranque automático de Node.js con una cuenta limitada, reinicio
+    ante fallos y registros. Puede utilizarse el Programador de tareas de Windows,
+    pero el proceso no debe necesitar privilegios de administrador diariamente.
+
+9.5 Reservar IP local, evitar suspensión y preparar nombre local y HTTPS.
+    Instalar la confianza del certificado en los equipos que usarán el sistema.
+
+9.6 Permitir acceso a la aplicación solo desde la red privada autorizada.
+    No publicar PostgreSQL, no abrir puertos del módem y no habilitar DMZ.
+
+9.7 Proteger datos y configuración con permisos de Windows y cifrado del disco.
+    Guardar claves de recuperación fuera de la máquina en un lugar seguro.
+
+9.8 Preparar credenciales propias del servidor definitivo. No dejar secretos del
+    desarrollador, túneles o dependencias hacia esta PC.
+
+10. ENSAYAR EN EL SERVIDOR REAL SIN TOCAR PRODUCCIÓN
+
+10.1 Instalar la versión aprobada usando datos, archivos y Supabase de pruebas.
+10.2 Probar desde dos dispositivos del cliente.
+10.3 Reiniciar Windows y comprobar arranque sin iniciar sesión en el escritorio.
+10.4 Repetir desconexión de internet y posterior sincronización.
+10.5 Medir espacio y revisar errores del servidor y del trabajador.
+10.6 Verificar respaldo y restauración con las herramientas instaladas allí.
+
+No ejecutar dos sincronizadores con la misma identidad. El ensayo no debe usar
+ni modificar las carpetas o bases reales por accidente.
+
+11. CAMBIO DEFINITIVO: VENTANA SIN CAPTURA
+
+11.1 Avisar al personal y detener las escrituras en la versión antigua.
+11.2 Crear respaldo final consistente de datos, configuración y archivos.
+11.3 Aplicar únicamente migraciones probadas de Supabase, inicialmente aditivas
+     y compatibles con la versión anterior cuando sea posible.
+11.4 Importar datos al PostgreSQL local conservando UUID y relaciones.
+11.5 Copiar adjuntos y comparar cantidades, referencias y huellas de archivos.
+11.6 Establecer el punto inicial de sincronización sin generar altas duplicadas.
+11.7 Preparar y comprobar accesos locales y permisos.
+11.8 Activar un único sincronizador de producción: el servidor del cliente.
+11.9 Verificar una operación controlada y su confirmación remota.
+11.10 Cambiar los accesos del personal al nuevo servidor.
+11.11 Retirar las escrituras clínicas de la aplicación antigua y restringir las
+      escrituras remotas directas según las políticas probadas.
+11.12 Confirmar funcionamiento desconectado y entregar instrucciones al personal.
+
+Conservar versión anterior y respaldos. No borrar el proyecto Supabase actual.
+
+12. CÓMO VOLVER ATRÁS SIN PERDER INFORMACIÓN
+
+Antes de que existan capturas nuevas:
+- Detener la versión nueva.
+- Verificar compatibilidad de la base remota con la anterior.
+- Restaurar el acceso anterior siguiendo el procedimiento ensayado.
+
+Después de que existan capturas locales nuevas:
+- Detener temporalmente escrituras.
+- Respaldar base local, adjuntos y cola pendiente.
+- Identificar qué operaciones llegaron a Supabase y cuáles no.
+- Conciliar o restaurar los datos antes de reabrir otra versión.
+- Verificar relaciones y archivos nuevamente.
+
+No abrir simplemente la aplicación anterior: podría ocultar los datos que solo
+existen localmente. Nunca mantener ambos sistemas recibiendo capturas distintas
+durante una recuperación improvisada.
+
+13. RESPALDOS Y MANTENIMIENTO
+
+Programar como mínimo:
+- Respaldo diario de PostgreSQL local y archivos, con verificación del resultado.
+- Copia cifrada fuera del servidor y una copia desconectada.
+- Respaldo previo a actualizaciones o cambios de esquema.
+- Prueba mensual de restauración y antes de cambios importantes.
+- Supervisión de espacio, servicio, fallos y antigüedad de pendientes.
+
+Respaldar también el estado de sincronización. Para una recuperación consistente,
+coordinar la captura de base y archivos o detener brevemente las escrituras.
+No respaldar PostgreSQL copiando simplemente su carpeta mientras está activo.
+
+La sincronización no sustituye a los respaldos: puede transmitir eliminaciones
+o errores. La copia diaria implica que un fallo total podría perder trabajo
+desde el último respaldo; revisar con el cliente si se necesita mayor frecuencia.
+
+Guardar instrucciones y secretos de recuperación donde puedan recuperarse aunque
+el servidor falle. La salud del servicio debe distinguir interfaz disponible,
+base local operativa, almacenamiento y sincronización remota.
+
+14. CRITERIO DE TERMINACIÓN
+
+El proyecto estará listo cuando:
+- Los usuarios autorizados puedan trabajar sin internet.
+- Los datos y pendientes sobrevivan reinicios.
+- La sincronización funcione sin duplicados ni pérdidas silenciosas.
+- Los permisos se respeten en el servidor y en la interfaz remota.
+- Los archivos puedan consultarse y recuperarse.
+- El servidor inicie automáticamente sin depender de esta PC.
+- Un respaldo completo se haya restaurado correctamente en otro entorno.
+- Existan instrucciones de operación, incidencias y recuperación para el cliente.
+
+ORDEN RECOMENDADO
+
+Primero conservar y verificar respaldos; después aislar el desarrollo; implementar
+y probar con datos ficticios; ensayar en el servidor del cliente; finalmente
+migrar durante una ventana sin captura. No comenzar por cambiar producción.
+
+No se incluyen comandos de migración ni scripts de sincronización inexistentes.
+Durante el desarrollo deberán prepararse, probarse y añadirse a la documentación
+operativa con las rutas y versiones reales antes del cambio definitivo.

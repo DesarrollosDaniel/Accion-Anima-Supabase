@@ -7,6 +7,8 @@ import {
   ChevronRight,
   CircleUserRound,
   ClipboardPlus,
+  Eye,
+  EyeOff,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -78,6 +80,7 @@ function initials(name: string) {
 function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -118,14 +121,25 @@ function Login() {
           </label>
           <label>
             Contraseña
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="current-password"
-              placeholder="••••••••••"
-              required
-            />
+            <span className="password-field">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+                placeholder="••••••••••"
+                required
+              />
+              <button
+                className="password-toggle"
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </span>
           </label>
           {error && <p className="form-error" role="alert">{error}</p>}
           <button className="button primary full" type="submit" disabled={loading}>
@@ -552,13 +566,14 @@ function Workspace({ session, onSignOut }: { session: Session; onSignOut: () => 
 
   const filteredPets = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('es')
+    if (term && searchResults) return searchResults
     const petsInView = pets.filter((pet) => view === 'inactive-pets' ? pet.status !== 'active' : pet.status === 'active')
     if (!term) return petsInView
-    return searchResults || petsInView.filter((pet) => [pet.name, pet.species, pet.breed, pet.guardian_name, pet.guardian_phone].some((value) => value?.toLocaleLowerCase('es').includes(term)))
+    return petsInView.filter((pet) => [pet.name, pet.species, pet.breed, pet.guardian_name, pet.guardian_phone].some((value) => value?.toLocaleLowerCase('es').includes(term)))
   }, [pets, search, searchResults, view])
 
   const selectedPet = selectedPetId
-    ? [...(searchResults || []), ...pets].find((pet) => pet.id === selectedPetId) || null
+    ? searchResults?.find((pet) => pet.id === selectedPetId) || pets.find((pet) => pet.id === selectedPetId) || null
     : null
 
   const openView = (nextView: View) => {
@@ -641,7 +656,7 @@ function Workspace({ session, onSignOut }: { session: Session; onSignOut: () => 
           {(view === 'pets' || view === 'inactive-pets') && (
             <section className="panel page-panel">
               <div className="page-actions"><div><p className="eyebrow">Expedientes</p><h2>{view === 'inactive-pets' ? 'Decesos' : 'Mascotas'}</h2><p className="muted">{view === 'inactive-pets' ? 'Mascotas enviadas a decesos. El estado se puede revertir.' : 'La búsqueda muestra únicamente mascotas activas.'}</p></div>{view === 'pets' && profile.role !== 'reception' && <button className="button primary" onClick={() => setModal('pet')}><Plus size={18} /> Nueva mascota</button>}</div>
-              <div className="search-box"><Search size={19} /><input value={search} onChange={(event) => { setSearch(event.target.value); setSelectedPetId(null) }} placeholder="Buscar por ID, mascota, especie, raza, tutor o teléfono" /></div>
+              <div className="search-box"><input value={search} onChange={(event) => { setSearch(event.target.value); setSelectedPetId(null) }} placeholder="Buscar por ID, mascota, especie, raza, tutor o teléfono" /><Search size={19} /></div>
               {selectedPet ? (
                 <section className="pet-detail-section" aria-labelledby="selected-pet-title">
                   <header className="pet-detail-header">
